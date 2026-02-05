@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Visualization | Fair Dispatch System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0f1a;
+            --bg-secondary: #0d1929;
+            --bg-card: #0f1e2e;
+            --bg-card-hover: #142639;
+            --accent-primary: #00d4aa;
+            --accent-secondary: #00b894;
+            --accent-glow: rgba(0, 212, 170, 0.4);
+            --accent-blue: #3b82f6;
+            --accent-yellow: #fbbf24;
+            --accent-purple: #a855f7;
+            --accent-orange: #f97316;
+            --accent-pink: #ec4899;
+            --text-primary: #ffffff;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border-primary: #1e3a5f;
+            --status-active: #00d4aa;
+            --status-processing: #fbbf24;
+            --status-idle: #64748b;
+            --status-error: #ef4444;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .header {
+            height: 60px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-primary);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+        }
+
+        .header-left { display: flex; align-items: center; gap: 16px; }
+
+        .logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .logo svg { width: 24px; height: 24px; color: var(--bg-primary); }
+        .header-title h1 { font-size: 18px; font-weight: 600; }
+        .header-title .subtitle { font-size: 12px; color: var(--text-muted); }
+        .header-nav { display: flex; gap: 8px; }
+
+        .header-nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .header-nav a:hover { color: var(--accent-primary); background: rgba(0, 212, 170, 0.1); }
+        .header-nav a.active { color: var(--accent-primary); background: rgba(0, 212, 170, 0.15); border-color: var(--accent-primary); }
+
+        .status-indicator { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--status-idle); }
+        .status-indicator.active { color: var(--status-active); }
+        .status-indicator.processing { color: var(--status-processing); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+        .status-indicator.processing .status-dot { animation: pulse 1s infinite; }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.3); } }
+
+        .main-container { margin-top: 60px; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+        .io-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .io-panel { background: var(--bg-card); border: 1px solid var(--border-primary); border-radius: 12px; overflow: hidden; }
+        .io-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--bg-secondary); border-bottom: 1px solid var(--border-primary); }
+        .io-panel-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+        .io-panel-title svg { width: 16px; height: 16px; color: var(--accent-primary); }
+
+        .io-panel textarea {
+            width: 100%;
+            height: 350px;
+            background: var(--bg-primary);
+            border: none;
+            color: var(--accent-primary);
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 11px;
+            padding: 16px;
+            resize: none;
+            line-height: 1.6;
+        }
+
+        .io-panel textarea:focus { outline: none; }
+        .io-panel pre { margin: 0; padding: 16px; font-family: 'Monaco', monospace; font-size: 11px; color: var(--accent-primary); white-space: pre-wrap; max-height: 350px; overflow-y: auto; background: var(--bg-primary); }
+
+        .btn-run {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 24px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border: none;
+            border-radius: 8px;
+            color: var(--bg-primary);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 20px var(--accent-glow);
+        }
+
+        .btn-run:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 30px var(--accent-glow); }
+        .btn-run:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-run svg { width: 18px; height: 18px; }
+
+        .agent-network-section { background: var(--bg-card); border: 1px solid var(--border-primary); border-radius: 12px; padding: 24px; }
+        .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+        .section-title { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+        .section-title svg { color: var(--accent-primary); }
+        .agent-network { position: relative; min-height: 380px; }
+        .connections-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+        .orchestrator-node { position: relative; margin: 0 auto 40px; width: 280px; z-index: 10; }
+
+        .agent-node {
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-primary);
+            border-radius: 12px;
+            padding: 16px 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .agent-node:hover { background: var(--bg-card-hover); border-color: var(--accent-primary); box-shadow: 0 0 30px var(--accent-glow); transform: translateY(-4px); }
+        .agent-node.orchestrator { background: linear-gradient(135deg, rgba(0, 212, 170, 0.15), rgba(0, 184, 148, 0.1)); border-color: var(--accent-primary); box-shadow: 0 0 40px var(--accent-glow); }
+        .agent-node.processing { border-color: var(--accent-yellow); box-shadow: 0 0 30px rgba(251, 191, 36, 0.4); animation: processingPulse 1.5s ease-in-out infinite; }
+        .agent-node.completed { border-color: var(--accent-primary); }
+        .agent-node.error { border-color: var(--status-error); box-shadow: 0 0 30px rgba(239, 68, 68, 0.4); }
+
+        @keyframes processingPulse { 0%, 100% { box-shadow: 0 0 20px rgba(251, 191, 36, 0.3); } 50% { box-shadow: 0 0 40px rgba(251, 191, 36, 0.6); } }
+
+        .agent-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+        .agent-icon svg { width: 22px; height: 22px; color: var(--bg-primary); }
+        .agent-icon.orchestrator { background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); }
+        .agent-icon.database { background: linear-gradient(135deg, var(--accent-blue), #2563eb); }
+        .agent-icon.planner { background: linear-gradient(135deg, var(--accent-purple), #9333ea); }
+        .agent-icon.fairness { background: linear-gradient(135deg, var(--accent-yellow), #f59e0b); }
+        .agent-icon.liaison { background: linear-gradient(135deg, var(--accent-orange), #ea580c); }
+        .agent-icon.explain { background: linear-gradient(135deg, var(--accent-pink), #db2777); }
+        .agent-icon.learning { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+
+        .agent-name { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+        .agent-description { font-size: 11px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4; }
+        .agent-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--border-primary); }
+        .agent-status { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 500; }
+        .agent-status.idle { color: var(--text-muted); }
+        .agent-status.processing { color: var(--status-processing); }
+        .agent-status.completed { color: var(--status-active); }
+        .agent-status .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+        .agent-status.processing .dot { animation: statusPulse 0.8s ease-in-out infinite; }
+        @keyframes statusPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .agent-meta { font-size: 11px; color: var(--text-muted); }
+        .agent-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; z-index: 10; }
+        .agent-grid .agent-node { min-height: 180px; }
+        .connection-line { fill: none; stroke: var(--accent-primary); stroke-width: 2; opacity: 0.6; stroke-dasharray: 8, 4; animation: flow 1s linear infinite; }
+        @keyframes flow { from { stroke-dashoffset: 12; } to { stroke-dashoffset: 0; } }
+
+        .results-section { background: var(--bg-card); border: 1px solid var(--border-primary); border-radius: 12px; overflow: hidden; }
+        .results-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: var(--bg-secondary); border-bottom: 1px solid var(--border-primary); }
+        .results-title { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+        .results-title svg { color: var(--accent-primary); }
+        .results-metrics { display: flex; gap: 20px; }
+        .metric-item { display: flex; flex-direction: column; align-items: center; padding: 8px 16px; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-primary); }
+        .metric-value { font-size: 18px; font-weight: 700; color: var(--accent-primary); }
+        .metric-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+        .results-table-wrapper { max-height: 350px; overflow-y: auto; }
+        .results-table { width: 100%; border-collapse: collapse; }
+        .results-table th { position: sticky; top: 0; background: var(--bg-secondary); padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-primary); }
+        .results-table td { padding: 14px 16px; font-size: 13px; border-bottom: 1px solid rgba(30, 58, 95, 0.5); }
+        .results-table tr:hover td { background: var(--bg-card-hover); }
+        .driver-cell { display: flex; align-items: center; gap: 10px; }
+        .driver-avatar { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: white; }
+        .driver-info { display: flex; flex-direction: column; }
+        .driver-name { font-weight: 500; }
+        .driver-id { font-size: 11px; color: var(--text-muted); }
+        .vehicle-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+        .vehicle-badge.bike { background: rgba(168, 85, 247, 0.15); color: var(--accent-purple); border: 1px solid rgba(168, 85, 247, 0.3); }
+        .vehicle-badge.van { background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); border: 1px solid rgba(59, 130, 246, 0.3); }
+        .score-cell { display: flex; flex-direction: column; }
+        .score-value { font-weight: 600; color: var(--accent-primary); }
+        .score-bar { width: 80px; height: 4px; background: var(--bg-primary); border-radius: 2px; margin-top: 4px; overflow: hidden; }
+        .score-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary)); border-radius: 2px; transition: width 0.5s ease; }
+        .fairness-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .fairness-badge.excellent { background: rgba(0, 212, 170, 0.15); color: var(--accent-primary); border: 1px solid rgba(0, 212, 170, 0.3); }
+        .fairness-badge.good { background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); border: 1px solid rgba(59, 130, 246, 0.3); }
+        .fairness-badge.fair { background: rgba(251, 191, 36, 0.15); color: var(--accent-yellow); border: 1px solid rgba(251, 191, 36, 0.3); }
+        .route-info { display: flex; flex-direction: column; gap: 2px; }
+        .route-stops { font-weight: 500; }
+        .route-details { font-size: 11px; color: var(--text-muted); }
+
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(8px); }
+        .modal.active { display: flex; }
+        .modal-content { background: #0d0d0d; border: 1px solid var(--border-primary); border-radius: 12px; width: 90%; max-width: 800px; max-height: 80vh; overflow: hidden; box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5); }
+        .terminal-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #1a1a1a; border-bottom: 1px solid #333; }
+        .terminal-dots { display: flex; gap: 8px; }
+        .terminal-dot { width: 12px; height: 12px; border-radius: 50%; }
+        .terminal-dot.red { background: #ff5f56; }
+        .terminal-dot.yellow { background: #ffbd2e; }
+        .terminal-dot.green { background: #27c93f; }
+        .terminal-title { font-size: 13px; font-weight: 500; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; }
+        .terminal-title svg { width: 16px; height: 16px; color: var(--accent-primary); }
+        .close-btn { width: 28px; height: 28px; background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 4px; }
+        .close-btn:hover { background: var(--bg-card); color: var(--text-primary); }
+        .terminal-body { padding: 20px; max-height: 500px; overflow-y: auto; background: #0d0d0d; }
+        .terminal-content { font-family: 'Monaco', monospace; font-size: 12px; line-height: 1.8; color: #00d4aa; }
+        .log-entry { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #222; }
+        .log-entry:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .log-timestamp { color: #666; margin-right: 8px; }
+        .log-step { color: var(--accent-yellow); font-weight: 500; }
+        .log-message { color: var(--accent-primary); margin-top: 4px; }
+        .log-json { background: #111; padding: 12px; border-radius: 6px; margin-top: 8px; white-space: pre-wrap; font-size: 11px; color: #aaa; max-height: 200px; overflow-y: auto; }
+
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 15, 26, 0.95); display: none; align-items: center; justify-content: center; z-index: 2000; flex-direction: column; gap: 30px; }
+        .loading-overlay.active { display: flex; }
+        .loading-spinner { position: relative; width: 100px; height: 100px; }
+        .spinner-ring { position: absolute; width: 100%; height: 100%; border-radius: 50%; border: 3px solid transparent; }
+        .spinner-ring:nth-child(1) { border-top-color: var(--accent-primary); animation: spin 1s linear infinite; }
+        .spinner-ring:nth-child(2) { width: 80%; height: 80%; top: 10%; left: 10%; border-right-color: var(--accent-blue); animation: spin 1.5s linear infinite reverse; }
+        .spinner-ring:nth-child(3) { width: 60%; height: 60%; top: 20%; left: 20%; border-bottom-color: var(--accent-yellow); animation: spin 2s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .loading-text { font-size: 16px; color: var(--text-secondary); }
+        .loading-agent { font-size: 14px; color: var(--accent-primary); font-weight: 500; margin-top: -15px; }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-primary); }
+        ::-webkit-scrollbar-thumb { background: var(--border-primary); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-primary); }
+
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+        .empty-state svg { width: 64px; height: 64px; margin-bottom: 16px; opacity: 0.5; }
+        .empty-state h3 { font-size: 16px; color: var(--text-secondary); margin-bottom: 8px; }
+
+        @media (max-width: 1200px) { .agent-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 768px) { .io-section { grid-template-columns: 1fr; } .agent-grid { grid-template-columns: repeat(2, 1fr); } .results-metrics { display: none; } }
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <div class="header-left">
+            <div class="logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+            </div>
+            <div class="header-title">
+                <h1>Fair Dispatch System</h1>
+                <span class="subtitle">Multi-Agent Visualization</span>
+            </div>
+        </div>
+        <nav class="header-nav">
+            <a href="/demo/allocate">Allocate</a>
+            <a href="/demo/visualization" class="active">Visualization</a>
+            <a href="/docs">API Docs</a>
+        </nav>
+        <div class="header-right">
+            <div class="status-indicator" id="systemStatus">
+                <span class="status-dot"></span>
+                <span>Ready</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-container">
+        <section class="io-section">
+            <div class="io-panel">
+                <div class="io-panel-header">
+                    <div class="io-panel-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        Request JSON
+                    </div>
+                    <button class="btn-run" id="btnRun" onclick="runAllocation()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        Run LangGraph Allocation
+                    </button>
+                </div>
+                <div class="io-panel-body">
+                    <textarea id="requestJson" spellcheck="false">{
+  "drivers": [
+    {"external_id": "driver_001", "name": "Raju", "vehicle_type": "bike", "vehicle_capacity_kg": 50},
+    {"external_id": "driver_002", "name": "Priya", "vehicle_type": "van", "vehicle_capacity_kg": 200},
+    {"external_id": "driver_003", "name": "Kumar", "vehicle_type": "bike", "vehicle_capacity_kg": 50},
+    {"external_id": "driver_004", "name": "Lakshmi", "vehicle_type": "bike", "vehicle_capacity_kg": 50},
+    {"external_id": "driver_005", "name": "Arjun", "vehicle_type": "van", "vehicle_capacity_kg": 200}
+  ],
+  "packages": [
+    {"external_id": "pkg_001", "weight_kg": 2.5, "lat": 13.0827, "lng": 80.2707, "priority": "standard"},
+    {"external_id": "pkg_002", "weight_kg": 5.0, "lat": 13.0850, "lng": 80.2750, "priority": "express"},
+    {"external_id": "pkg_003", "weight_kg": 1.5, "lat": 13.0800, "lng": 80.2680, "priority": "standard"},
+    {"external_id": "pkg_004", "weight_kg": 8.0, "lat": 13.0900, "lng": 80.2800, "priority": "standard"},
+    {"external_id": "pkg_005", "weight_kg": 3.0, "lat": 13.0750, "lng": 80.2650, "priority": "express"},
+    {"external_id": "pkg_006", "weight_kg": 4.5, "lat": 13.0880, "lng": 80.2720, "priority": "standard"},
+    {"external_id": "pkg_007", "weight_kg": 2.0, "lat": 13.0820, "lng": 80.2690, "priority": "standard"},
+    {"external_id": "pkg_008", "weight_kg": 6.0, "lat": 13.0860, "lng": 80.2780, "priority": "bulk"}
+  ],
+  "allocation_date": "2026-02-05"
+}</textarea>
+                </div>
+            </div>
+            <div class="io-panel">
+                <div class="io-panel-header">
+                    <div class="io-panel-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                        Response
+                    </div>
+                </div>
+                <div class="io-panel-body">
+                    <pre id="responseJson">Allocation results will appear here...</pre>
+                </div>
+            </div>
+        </section>
+
+        <section class="agent-network-section">
+            <div class="section-header">
+                <div class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+                    Multi-Agent Workflow
+                </div>
+            </div>
+            <div class="agent-network">
+                <svg class="connections-svg" id="connectionsSvg"></svg>
+                <div class="orchestrator-node">
+                    <div class="agent-node orchestrator" id="agent-orchestrator" onclick="openTerminal('ORCHESTRATOR')">
+                        <div class="agent-icon orchestrator">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+                        </div>
+                        <div class="agent-name">Central Orchestrator</div>
+                        <div class="agent-description">Coordinates all agents and manages workflow state</div>
+                        <div class="agent-footer">
+                            <div class="agent-status idle" id="status-orchestrator"><span class="dot"></span><span>Idle</span></div>
+                            <span class="agent-meta" id="meta-orchestrator">6 agents connected</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="agent-grid">
+                    <div class="agent-node" id="agent-ml_effort" onclick="openTerminal('ML_EFFORT')">
+                        <div class="agent-icon database"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
+                        <div class="agent-name">ML Effort Agent</div>
+                        <div class="agent-description">Computes effort matrix using ML models</div>
+                        <div class="agent-footer"><div class="agent-status idle" id="status-ml_effort"><span class="dot"></span><span>Idle</span></div><span class="agent-meta" id="meta-ml_effort">--</span></div>
+                    </div>
+                    <div class="agent-node" id="agent-route_planner" onclick="openTerminal('ROUTE_PLANNER')">
+                        <div class="agent-icon planner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3zM9 3v18M15 3v18M3 9h18M3 15h18"/></svg></div>
+                        <div class="agent-name">Route Planner Agent</div>
+                        <div class="agent-description">Generates optimal route assignments</div>
+                        <div class="agent-footer"><div class="agent-status idle" id="status-route_planner"><span class="dot"></span><span>Idle</span></div><span class="agent-meta" id="meta-route_planner">0 proposals</span></div>
+                    </div>
+                    <div class="agent-node" id="agent-fairness_manager" onclick="openTerminal('FAIRNESS_MANAGER')">
+                        <div class="agent-icon fairness"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M5 8h14l-2 8H7L5 8z"/><circle cx="7" cy="20" r="2"/><circle cx="17" cy="20" r="2"/></svg></div>
+                        <div class="agent-name">Fairness Manager</div>
+                        <div class="agent-description">Evaluates workload fairness across drivers</div>
+                        <div class="agent-footer"><div class="agent-status idle" id="status-fairness_manager"><span class="dot"></span><span>Idle</span></div><span class="agent-meta" id="meta-fairness_manager">Gini: --</span></div>
+                    </div>
+                    <div class="agent-node" id="agent-driver_liaison" onclick="openTerminal('DRIVER_LIAISON')">
+                        <div class="agent-icon liaison"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+                        <div class="agent-name">Driver Liaison</div>
+                        <div class="agent-description">Negotiates with drivers and handles feedback</div>
+                        <div class="agent-footer"><div class="agent-status idle" id="status-driver_liaison"><span class="dot"></span><span>Idle</span></div><span class="agent-meta" id="meta-driver_liaison">0 interactions</span></div>
+                    </div>
+                    <div class="agent-node" id="agent-explainability" onclick="openTerminal('EXPLAINABILITY')">
+                        <div class="agent-icon explain"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>
+                        <div class="agent-name">Explainability Agent</div>
+                        <div class="agent-description">Generates human-readable explanations</div>
+                        <div class="agent-footer"><div class="agent-status idle" id="status-explainability"><span class="dot"></span><span>Idle</span></div><span class="agent-meta" id="meta-explainability">0 explanations</span></div>
+                    </div>
+                    <div class="agent-node" id="agent-learning" onclick="openTerminal('LEARNING')">
+                        <div class="agent-icon learning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div>
+                        <div class="agent-name">Learning Agent</div>
+                        <div class="agent-description">Continuous improvement from feedback</div>
+                        <div class="agent-footer"><div class="agent-status idle" id="status-learning"><span class="dot"></span><span>Idle</span></div><span class="agent-meta" id="meta-learning">Improving</span></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="results-section" id="resultsSection" style="display: none;">
+            <div class="results-header">
+                <div class="results-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                    Driver Route Allocation Results
+                </div>
+                <div class="results-metrics">
+                    <div class="metric-item"><span class="metric-value" id="metricAvgWorkload">--</span><span class="metric-label">Avg Workload</span></div>
+                    <div class="metric-item"><span class="metric-value" id="metricGini">--</span><span class="metric-label">Gini Index</span></div>
+                    <div class="metric-item"><span class="metric-value" id="metricStdDev">--</span><span class="metric-label">Std Dev</span></div>
+                </div>
+            </div>
+            <div class="results-table-wrapper">
+                <table class="results-table">
+                    <thead><tr><th>Driver</th><th>Vehicle</th><th>Route</th><th>Workload Score</th><th>Fairness Score</th><th>Explanation</th></tr></thead>
+                    <tbody id="resultsTableBody"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <div class="modal" id="terminalModal">
+        <div class="modal-content">
+            <div class="terminal-header">
+                <div class="terminal-dots"><span class="terminal-dot red"></span><span class="terminal-dot yellow"></span><span class="terminal-dot green"></span></div>
+                <div class="terminal-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg><span id="terminalTitle">Agent Logs</span></div>
+                <button class="close-btn" onclick="closeTerminal()">&times;</button>
+            </div>
+            <div class="terminal-body">
+                <div class="terminal-content" id="terminalContent">
+                    <div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg><h3>No logs yet</h3><p>Run an allocation to see agent decision logs</p></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"><div class="spinner-ring"></div><div class="spinner-ring"></div><div class="spinner-ring"></div></div>
+        <div class="loading-text">Processing allocation...</div>
+        <div class="loading-agent" id="loadingAgent">Initializing agents...</div>
+    </div>
+
+    <script>
+        let allocationRunId = null;
+        let agentLogs = {};
+        let currentResponse = null;
+        const AGENT_NAMES = { 'ORCHESTRATOR': 'Central Orchestrator', 'ML_EFFORT': 'ML Effort Agent', 'ROUTE_PLANNER': 'Route Planner Agent', 'FAIRNESS_MANAGER': 'Fairness Manager', 'DRIVER_LIAISON': 'Driver Liaison', 'EXPLAINABILITY': 'Explainability Agent', 'LEARNING': 'Learning Agent' };
+
+        async function runAllocation() {
+            const btn = document.getElementById('btnRun');
+            let requestData;
+            try { requestData = JSON.parse(document.getElementById('requestJson').value); } catch (e) { alert('Invalid JSON: ' + e.message); return; }
+            resetAgentStates(); agentLogs = {}; allocationRunId = null;
+            document.getElementById('resultsSection').style.display = 'none';
+            document.getElementById('responseJson').textContent = 'Processing...';
+            showLoading(true); btn.disabled = true; updateSystemStatus('processing', 'Processing...');
+            try {
+                await simulateAgentProgress();
+                const response = await fetch('/api/v1/allocate/langgraph', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestData) });
+                if (!response.ok) { const error = await response.json(); throw new Error(error.detail?.message || error.detail || 'Allocation failed'); }
+                currentResponse = await response.json();
+                allocationRunId = currentResponse.allocation_run_id;
+                document.getElementById('responseJson').textContent = JSON.stringify(currentResponse, null, 2);
+                await fetchAgentTimeline(allocationRunId);
+                displayResultsTable(currentResponse);
+                completeAllAgents(); updateSystemStatus('active', 'Completed');
+            } catch (error) {
+                console.error('Allocation error:', error);
+                document.getElementById('responseJson').textContent = 'Error: ' + error.message;
+                setAgentError(); updateSystemStatus('idle', 'Error');
+            } finally { showLoading(false); btn.disabled = false; }
+        }
+
+        async function fetchAgentTimeline(runId) {
+            try {
+                const response = await fetch(`/api/v1/admin/agent_timeline?allocation_run_id=${runId}`);
+                if (!response.ok) return;
+                const data = await response.json();
+                agentLogs = { 'ORCHESTRATOR': [], 'ML_EFFORT': [], 'ROUTE_PLANNER': [], 'FAIRNESS_MANAGER': [], 'DRIVER_LIAISON': [], 'EXPLAINABILITY': [], 'LEARNING': [] };
+                if (data.timeline) { data.timeline.forEach(event => { if (agentLogs[event.agent_name]) agentLogs[event.agent_name].push(event); }); }
+                if (data.steps) { data.steps.forEach(step => { if (agentLogs[step.agent_name]) { const existing = agentLogs[step.agent_name].find(e => e.step_type === step.step_type); if (existing) { existing.input_snapshot = step.input_snapshot; existing.output_snapshot = step.output_snapshot; } } }); }
+                updateAgentMetaFromLogs(data);
+            } catch (error) { console.error('Failed to fetch agent timeline:', error); }
+        }
+
+        function resetAgentStates() {
+            ['orchestrator', 'ml_effort', 'route_planner', 'fairness_manager', 'driver_liaison', 'explainability', 'learning'].forEach(agent => {
+                const node = document.getElementById(`agent-${agent}`); const status = document.getElementById(`status-${agent}`);
+                if (node) node.classList.remove('active', 'processing', 'completed', 'error');
+                if (status) { status.className = 'agent-status idle'; status.querySelector('span:last-child').textContent = 'Idle'; }
+            });
+        }
+
+        function setAgentState(agentId, state) {
+            const node = document.getElementById(`agent-${agentId}`); const status = document.getElementById(`status-${agentId}`);
+            if (node) { node.classList.remove('active', 'processing', 'completed', 'error'); node.classList.add(state); }
+            if (status) { status.className = `agent-status ${state}`; status.querySelector('span:last-child').textContent = state.charAt(0).toUpperCase() + state.slice(1); }
+        }
+
+        async function simulateAgentProgress() {
+            const agents = [{ id: 'orchestrator', name: 'Central Orchestrator', delay: 200 }, { id: 'ml_effort', name: 'ML Effort Agent', delay: 400 }, { id: 'route_planner', name: 'Route Planner Agent', delay: 500 }, { id: 'fairness_manager', name: 'Fairness Manager', delay: 400 }, { id: 'driver_liaison', name: 'Driver Liaison', delay: 300 }, { id: 'explainability', name: 'Explainability Agent', delay: 300 }, { id: 'learning', name: 'Learning Agent', delay: 200 }];
+            for (const agent of agents) { updateLoadingAgent(agent.name); setAgentState(agent.id, 'processing'); await delay(agent.delay); }
+        }
+
+        function completeAllAgents() { ['orchestrator', 'ml_effort', 'route_planner', 'fairness_manager', 'driver_liaison', 'explainability', 'learning'].forEach(agent => setAgentState(agent, 'completed')); }
+        function setAgentError() { ['orchestrator', 'ml_effort', 'route_planner', 'fairness_manager', 'driver_liaison', 'explainability', 'learning'].forEach(agent => { const node = document.getElementById(`agent-${agent}`); if (node && node.classList.contains('processing')) setAgentState(agent, 'error'); }); }
+
+        function updateAgentMetaFromLogs(data) {
+            if (data.timeline) { data.timeline.forEach(event => {
+                const metaEl = document.getElementById(`meta-${event.agent_name.toLowerCase()}`);
+                if (metaEl && event.short_message) {
+                    const msg = event.short_message;
+                    if (event.agent_name === 'ML_EFFORT') metaEl.textContent = msg.replace('Computed effort matrix for ', '');
+                    else if (event.agent_name === 'ROUTE_PLANNER') metaEl.textContent = event.step_type === 'PROPOSAL_1' ? '1 proposal' : '2 proposals';
+                    else if (event.agent_name === 'FAIRNESS_MANAGER') metaEl.textContent = msg.includes('accepted') ? 'Passed ✓' : 'Re-optimize';
+                    else if (event.agent_name === 'DRIVER_LIAISON') { const match = msg.match(/(\d+) ACCEPT/); metaEl.textContent = match ? `${match[1]} accepted` : msg; }
+                    else if (event.agent_name === 'EXPLAINABILITY') { const match = msg.match(/Generated (\d+)/); metaEl.textContent = match ? `${match[1]} explanations` : msg; }
+                }
+            }); }
+            if (data.allocation_run?.global_metrics?.gini_index !== null) document.getElementById('meta-fairness_manager').textContent = `Gini: ${data.allocation_run.global_metrics.gini_index.toFixed(3)}`;
+        }
+
+        function openTerminal(agentName) {
+            const modal = document.getElementById('terminalModal'); const title = document.getElementById('terminalTitle'); const content = document.getElementById('terminalContent');
+            title.textContent = `${AGENT_NAMES[agentName] || agentName} - Decision Logs`;
+            const logs = agentLogs[agentName] || [];
+            if (logs.length === 0) { content.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg><h3>No logs for ${AGENT_NAMES[agentName]}</h3><p>Run an allocation to see decision logs</p></div>`; }
+            else {
+                let html = '';
+                logs.forEach(log => {
+                    const timestamp = log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : '--:--:--';
+                    html += `<div class="log-entry"><div><span class="log-timestamp">[${timestamp}]</span><span class="log-step">${log.step_type || 'STEP'}</span></div><div class="log-message">${log.short_message || 'Processing...'}</div>${log.input_snapshot || log.output_snapshot ? `<div class="log-json">${log.input_snapshot ? `<strong>Input:</strong>\n${JSON.stringify(log.input_snapshot, null, 2)}\n\n` : ''}${log.output_snapshot ? `<strong>Output:</strong>\n${JSON.stringify(log.output_snapshot, null, 2)}` : ''}</div>` : ''}</div>`;
+                });
+                content.innerHTML = html;
+            }
+            modal.classList.add('active');
+        }
+
+        function closeTerminal() { document.getElementById('terminalModal').classList.remove('active'); }
+
+        function displayResultsTable(response) {
+            if (!response?.assignments?.length) return;
+            document.getElementById('resultsSection').style.display = 'block';
+            if (response.global_fairness) {
+                document.getElementById('metricAvgWorkload').textContent = response.global_fairness.avg_workload?.toFixed(2) || '--';
+                document.getElementById('metricGini').textContent = response.global_fairness.gini_index?.toFixed(4) || '--';
+                document.getElementById('metricStdDev').textContent = response.global_fairness.std_dev?.toFixed(2) || '--';
+            }
+            const tbody = document.getElementById('resultsTableBody');
+            const maxWorkload = Math.max(...response.assignments.map(a => a.workload_score));
+            let html = '';
+            response.assignments.forEach(a => {
+                const initials = a.driver_name.split(' ').map(n => n[0]).join('').toUpperCase();
+                const vehicleClass = a.route_summary ? 'van' : 'bike';
+                const workloadPercent = (a.workload_score / maxWorkload * 100).toFixed(0);
+                const fairnessClass = a.fairness_score >= 0.9 ? 'excellent' : a.fairness_score >= 0.7 ? 'good' : 'fair';
+                const fairnessLabel = a.fairness_score >= 0.9 ? 'Excellent' : a.fairness_score >= 0.7 ? 'Good' : 'Fair';
+                html += `<tr><td><div class="driver-cell"><div class="driver-avatar">${initials}</div><div class="driver-info"><span class="driver-name">${a.driver_name}</span><span class="driver-id">${a.driver_external_id}</span></div></div></td><td><span class="vehicle-badge ${vehicleClass}">${vehicleClass === 'van' ? '🚐' : '🚴'} ${vehicleClass.charAt(0).toUpperCase() + vehicleClass.slice(1)}</span></td><td><div class="route-info"><span class="route-stops">${a.route_summary?.num_stops || '?'} stops</span><span class="route-details">${a.route_summary?.num_packages || '?'} pkgs • ${a.route_summary?.total_weight_kg?.toFixed(1) || '?'} kg</span></div></td><td><div class="score-cell"><span class="score-value">${a.workload_score.toFixed(2)}</span><div class="score-bar"><div class="score-bar-fill" style="width: ${workloadPercent}%"></div></div></div></td><td><span class="fairness-badge ${fairnessClass}">${fairnessLabel} (${(a.fairness_score * 100).toFixed(0)}%)</span></td><td><span style="font-size: 12px; color: var(--text-secondary);">${truncate(a.explanation, 60)}</span></td></tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function showLoading(show) { document.getElementById('loadingOverlay').classList.toggle('active', show); }
+        function updateLoadingAgent(agentName) { document.getElementById('loadingAgent').textContent = `Running: ${agentName}...`; }
+        function updateSystemStatus(state, text) { const indicator = document.getElementById('systemStatus'); indicator.className = `status-indicator ${state}`; indicator.querySelector('span:last-child').textContent = text; }
+        function delay(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+        function truncate(str, maxLen) { if (!str) return '--'; return str.length > maxLen ? str.substring(0, maxLen) + '...' : str; }
+
+        document.getElementById('terminalModal').addEventListener('click', function(e) { if (e.target === this) closeTerminal(); });
+        document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeTerminal(); });
+
+        function drawConnections() {
+            const svg = document.getElementById('connectionsSvg');
+            const orchestrator = document.querySelector('.orchestrator-node');
+            const agentNodes = document.querySelectorAll('.agent-grid .agent-node');
+            if (!orchestrator || agentNodes.length === 0) return;
+            const svgRect = svg.getBoundingClientRect();
+            const orchRect = orchestrator.getBoundingClientRect();
+            const orchCenterX = orchRect.left + orchRect.width / 2 - svgRect.left;
+            const orchBottomY = orchRect.bottom - svgRect.top;
+            let paths = '';
+            agentNodes.forEach(node => {
+                const nodeRect = node.getBoundingClientRect();
+                const nodeCenterX = nodeRect.left + nodeRect.width / 2 - svgRect.left;
+                const nodeTopY = nodeRect.top - svgRect.top;
+                const midY = orchBottomY + (nodeTopY - orchBottomY) / 2;
+                paths += `<path class="connection-line" d="M ${orchCenterX} ${orchBottomY} C ${orchCenterX} ${midY}, ${nodeCenterX} ${midY}, ${nodeCenterX} ${nodeTopY}" />`;
+            });
+            svg.innerHTML = paths;
+        }
+
+        window.addEventListener('load', drawConnections);
+        window.addEventListener('resize', drawConnections);
+    </script>
+</body>
+</html>
