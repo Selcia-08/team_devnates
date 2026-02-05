@@ -31,7 +31,7 @@ Fair Dispatch is an AI‑assisted, **fairness‑aware route allocation engine** 
 | Feature | Description |
 |---------|-------------|
 | **🎯 Single API Endpoint** | One POST to `/api/v1/langgraph/allocate` handles everything |
-| **🤖 8+ Specialized AI Agents** | LangGraph-orchestrated multi-agent workflow |
+| **🤖 5+ Specialized AI Agents** | LangGraph-orchestrated multi-agent workflow |
 | **⚖️ Fairness-First Design** | Gini index, individual fairness scores, and equity metrics |
 | **🗣️ Natural Language Explanations** | Gemini-powered driver-friendly route explanations |
 | **📊 Live Agent Visualization** | Real-time Streamlit dashboard showing agent workflow |
@@ -68,7 +68,7 @@ Fair Dispatch is an AI‑assisted, **fairness‑aware route allocation engine** 
         │
         ▼
 ┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐
-│  🎓 Learning     │ → │  🗣️ Gemini       │ → │  ✅ Finalize     │
+│  🎓 Learning     │ → │  🗣️ LLM       │ → │  ✅ Finalize     │
 │     Agent       │   │   Explain       │   │     Node        │
 └─────────────────┘   └─────────────────┘   └─────────────────┘
 ```
@@ -85,7 +85,7 @@ Fair Dispatch is an AI‑assisted, **fairness‑aware route allocation engine** 
 | **EV Recovery Node** | Handles EV battery constraints | Charging station insertions |
 | **Driver Liaison Agent** | Handles driver negotiations/appeals | Appeal resolutions |
 | **Learning Agent** | Updates models from feedback | Improved future allocations |
-| **Gemini Explain Node** | Generates natural language explanations | Human-readable route descriptions |
+| **LLM Explain Node** | Generates natural language explanations | Human-readable route descriptions |
 
 ## 🚀 Quick Start
 
